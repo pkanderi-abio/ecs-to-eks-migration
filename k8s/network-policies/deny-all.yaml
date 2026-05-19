@@ -1,0 +1,25 @@
+# Default deny-all applied to every namespace.
+# Explicit allow rules are added per-service below.
+# SOC2 CC6.6 + HIPAA §164.312(e)(1) — access control in transit
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-ingress
+  namespace: platform
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    # Allow DNS (CoreDNS + NodeLocalDNS)
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Allow HTTPS egress (ECR, AWS APIs, external services)
+    - ports:
+        - port: 443
+          protocol: TCP

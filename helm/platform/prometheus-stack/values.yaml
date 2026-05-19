@@ -1,0 +1,67 @@
+# kube-prometheus-stack values — production
+# Replaces CloudWatch Insights (was $8,200/month at scale)
+# Prometheus + Grafana + Alertmanager
+
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 500Gi
+    resources:
+      requests:
+        cpu:    "500m"
+        memory: "2Gi"
+      limits:
+        cpu:    "2000m"
+        memory: "8Gi"
+    # Scrape Argo Rollouts + KEDA metrics
+    additionalScrapeConfigs:
+      - job_name: argo-rollouts
+        static_configs:
+          - targets: ["argo-rollouts-metrics.argo-rollouts:8090"]
+      - job_name: keda-metrics
+        static_configs:
+          - targets: ["keda-operator-metrics-apiserver.keda:9022"]
+
+grafana:
+  adminPassword: "${GRAFANA_ADMIN_PASSWORD}"  # injected from Secrets Manager
+  persistence:
+    enabled: true
+    size: 10Gi
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'eks-migration'
+          folder: 'ECS→EKS Migration'
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/eks-migration
+
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          resources:
+            requests:
+              storage: 10Gi
+  config:
+    route:
+      receiver: pagerduty-critical
+      group_by: [alertname, service, namespace]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+    receivers:
+      - name: pagerduty-critical
+        pagerduty_configs:
+          - routing_key: "${PAGERDUTY_ROUTING_KEY}"
+            description: "{{ .GroupLabels.alertname }} — {{ .GroupLabels.service }}"

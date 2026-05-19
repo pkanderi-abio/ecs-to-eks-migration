@@ -1,0 +1,105 @@
+{{- if .Values.rollout.enabled }}
+# Managed by Argo Rollouts — canary deployment with Prometheus analysis gates
+# Full spec lives in k8s/rollouts/api-gateway-rollout.yaml
+# This template injects image tag from CI/CD
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "api-gateway.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "api-gateway.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "api-gateway.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "api-gateway.selectorLabels" . | nindent 8 }}
+        version: {{ .Values.image.tag | quote }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      serviceAccountName: {{ include "api-gateway.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: metrics
+              containerPort: 9090
+          envFrom:
+            - secretRef:
+                name: api-gateway-secrets
+          env:
+            - name: POD_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - name: ENVIRONMENT
+              value: production
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+  strategy:
+    canary:
+      canaryService: {{ include "api-gateway.fullname" . }}-canary
+      stableService: {{ include "api-gateway.fullname" . }}-stable
+      trafficRouting:
+        alb:
+          ingress: {{ include "api-gateway.fullname" . }}-ingress
+          servicePort: 80
+      steps:
+        - setWeight: {{ .Values.rollout.canaryWeight }}
+        - analysis:
+            templates:
+              - templateName: error-rate-check
+            args:
+              - name: service-name
+                value: {{ include "api-gateway.fullname" . }}
+        - pause:
+            duration: 15m
+        - setWeight: 25
+        - pause:
+            duration: 30m
+        - setWeight: 50
+        - analysis:
+            templates:
+              - templateName: error-rate-check
+              - templateName: p99-latency-check
+            args:
+              - name: service-name
+                value: {{ include "api-gateway.fullname" . }}
+        - pause:
+            duration: 1h
+        - setWeight: 100
+      maxSurge: "25%"
+      maxUnavailable: 0
+{{- end }}

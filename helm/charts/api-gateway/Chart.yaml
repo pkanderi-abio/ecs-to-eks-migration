@@ -1,0 +1,13 @@
+apiVersion: v2
+name: api-gateway
+description: API Gateway service — EKS production chart
+type: application
+version: 1.4.0
+appVersion: "2.3.1"
+keywords:
+  - api-gateway
+  - platform
+maintainers:
+  - name: platform-team
+    email: platform@example.com
+dependencies: []

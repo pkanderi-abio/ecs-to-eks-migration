@@ -1,0 +1,27 @@
+# KEDA ScaledObject — billing-service
+# Scales on: SQS billing-events queue depth
+# billing-service processes async billing events; queue-depth is the right trigger
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: billing-service-scaler
+  namespace: platform
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: billing-service
+  pollingInterval:  10
+  cooldownPeriod:   120
+  minReplicaCount:  2
+  maxReplicaCount:  20
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: keda-aws-credentials
+      metadata:
+        queueURL: https://sqs.us-east-1.amazonaws.com/123456789/billing-events
+        queueLength: "50"   # 50 msgs/replica before scale-out
+        awsRegion: us-east-1
+        scaler: SqsQueueLagScaler
+        identityOwner: operator

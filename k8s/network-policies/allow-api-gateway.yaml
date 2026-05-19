@@ -1,0 +1,51 @@
+# api-gateway: allow inbound from ALB (via aws-node/kube-proxy) + outbound to platform services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-gateway
+  namespace: platform
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: auth-service
+      ports:
+        - protocol: TCP
+          port: 8080
+    - to:
+        - podSelector:
+            matchLabels:
+              app: billing-service
+      ports:
+        - protocol: TCP
+          port: 8080
+    # ElastiCache Redis (cluster mode)
+    - ports:
+        - protocol: TCP
+          port: 6379
+    # RDS Aurora PostgreSQL
+    - ports:
+        - protocol: TCP
+          port: 5432
+    # DNS
+    - ports:
+        - port: 53; protocol: UDP
+        - port: 53; protocol: TCP
+    # AWS APIs (Secrets Manager, SSM, STS)
+    - ports:
+        - port: 443; protocol: TCP

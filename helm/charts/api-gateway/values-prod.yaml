@@ -1,0 +1,13 @@
+# Production overrides
+replicaCount: 6
+
+resources:
+  requests:
+    cpu:    "500m"
+    memory: "1Gi"
+  limits:
+    cpu:    "2000m"
+    memory: "2Gi"
+
+podDisruptionBudget:
+  minAvailable: 4  # keep 4/6 pods always available (SOC2 availability SLA)

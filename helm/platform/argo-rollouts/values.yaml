@@ -1,0 +1,34 @@
+# Argo Rollouts values — production
+controller:
+  replicas: 2
+  resources:
+    requests:
+      cpu:    "100m"
+      memory: "128Mi"
+    limits:
+      cpu:    "500m"
+      memory: "512Mi"
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+dashboard:
+  enabled: true
+  service:
+    type: ClusterIP
+
+notifications:
+  enabled: true
+  # Slack notification on rollback
+  templates:
+    template.rollback-notification: |
+      message: |
+        🚨 *Rollout Rolled Back*
+        Service: {{.rollout.metadata.name}}
+        Namespace: {{.rollout.metadata.namespace}}
+        Reason: {{.rollout.status.message}}
+  triggers:
+    trigger.on-rollback: |
+      - send: [rollback-notification]
+        when: rollout.status.abort == true

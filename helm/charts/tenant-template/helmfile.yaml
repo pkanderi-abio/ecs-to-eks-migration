@@ -1,0 +1,20 @@
+# Helmfile — deploy per-tenant services for all 12 tenants
+# Usage: helmfile -f helm/charts/tenant-template/helmfile.yaml sync
+environments:
+  prod:
+    values:
+      - values-prod.yaml
+
+releases:
+  {{- range $i, $tenant := list "01" "02" "03" "04" "05" "06" "07" "08" "09" "10" "11" "12" }}
+  - name: tenant-{{ $tenant }}
+    namespace: tenant-{{ $tenant }}
+    chart: ./helm/charts/tenant-template
+    values:
+      - helm/charts/tenant-template/values.yaml
+    set:
+      - name: tenantId
+        value: "{{ $tenant }}"
+      - name: namespace
+        value: "tenant-{{ $tenant }}"
+  {{- end }}
