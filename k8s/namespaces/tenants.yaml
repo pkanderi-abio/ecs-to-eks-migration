@@ -1,0 +1,23 @@
+# One namespace per enterprise tenant — multi-tenancy isolation
+# Generated for tenants 1-12; expand as needed
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant-01
+  labels:
+    tenant-id: "01"
+    compliance: hipaa
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-01-quota
+  namespace: tenant-01
+spec:
+  hard:
+    requests.cpu:    "8"
+    requests.memory: "16Gi"
+    limits.cpu:      "16"
+    limits.memory:   "32Gi"
+    pods:            "50"

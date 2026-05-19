@@ -1,0 +1,21 @@
+# KEDA values — production
+operator:
+  replicaCount: 2
+  resources:
+    limits:
+      cpu:    "1"
+      memory: "1000Mi"
+    requests:
+      cpu:    "100m"
+      memory: "100Mi"
+
+metricsServer:
+  replicaCount: 2
+
+webhooks:
+  enabled: true
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault

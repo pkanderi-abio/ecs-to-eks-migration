@@ -1,0 +1,43 @@
+# Platform namespace — houses all shared services (api-gateway, auth, billing, notification)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform
+  labels:
+    environment: production
+    compliance: "hipaa,soc2"
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: platform-quota
+  namespace: platform
+spec:
+  hard:
+    requests.cpu:    "80"
+    requests.memory: "160Gi"
+    limits.cpu:      "160"
+    limits.memory:   "320Gi"
+    pods:            "500"
+    services:        "100"
+    persistentvolumeclaims: "50"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: platform-limits
+  namespace: platform
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu:    "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu:    "100m"
+        memory: "128Mi"
+      max:
+        cpu:    "4"
+        memory: "8Gi"
